@@ -1,0 +1,79 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Colab ke liye ye line add karo
+%matplotlib inline
+
+G = 4.300e-6
+c = 3e5
+
+def rotation_curve(r, M_disk, M_bulge, M_gas, r_scale, r_bulge, r_gas, r_c, T_Z):
+    def M_bary(r):
+        disk = M_disk * (1 - np.exp(-r / r_scale))
+        bulge = M_bulge * (r**2 / (r**2 + r_bulge**2))
+        gas = M_gas * (1 - np.exp(-r / r_gas))
+        return disk + bulge + gas
+    v_bary_sq = G * M_bary(r) / r
+    v_fabric_sq = T_Z * c**2 * (1 - np.exp(-r / r_c))
+    return np.sqrt(v_bary_sq + v_fabric_sq)
+
+# Milky Way
+T_Z_mw = (220 / c)**2
+r_c_mw = 5.0
+
+r_mw = np.array([0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20])
+v_mw = np.array([180, 200, 215, 225, 230, 235, 238, 240, 242, 243, 244, 244, 242, 240, 238, 236])
+
+# Andromeda
+T_Z_and = 4.0e-7
+r_c_and = 12.0
+
+r_and = np.array([2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
+v_and = np.array([180, 210, 230, 240, 245, 248, 250, 251, 252, 253, 253, 254, 254, 254, 254])
+
+# Plot
+plt.figure(figsize=(12, 5))
+
+# Milky Way plot
+plt.subplot(1, 2, 1)
+r_model_mw = np.linspace(0.5, 20, 200)
+v_model_mw = rotation_curve(r_model_mw, 5e10, 1e10, 5e9, 5.0, 1.0, 7.0, r_c_mw, T_Z_mw)
+plt.plot(r_mw, v_mw, 'o', label='Observed (MW)')
+plt.plot(r_model_mw, v_model_mw, '-', label='Zuned Model')
+plt.xlabel('Radius (kpc)')
+plt.ylabel('Velocity (km/s)')
+plt.title('Milky Way')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+# Andromeda plot
+plt.subplot(1, 2, 2)
+r_model_and = np.linspace(2, 30, 200)
+v_model_and = rotation_curve(r_model_and, 8e10, 2e10, 1e10, 6.0, 1.5, 8.0, r_c_and, T_Z_and)
+plt.plot(r_and, v_and, 'o', label='Observed (M31)')
+plt.plot(r_model_and, v_model_and, '-', label='Zuned Model')
+plt.xlabel('Radius (kpc)')
+plt.ylabel('Velocity (km/s)')
+plt.title('Andromeda (M31)')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# Print tables
+print("\n" + "="*60)
+print(f"Milky Way (T_Z = {T_Z_mw:.2e}, r_c = {r_c_mw} kpc)")
+print("="*60)
+for r in [5, 10, 15, 20]:
+    v_o = np.interp(r, r_mw, v_mw)
+    v_m = rotation_curve(r, 5e10, 1e10, 5e9, 5.0, 1.0, 7.0, r_c_mw, T_Z_mw)
+    print(f"r={r:3.0f} kpc | Obs={v_o:.0f} | Model={v_m:.0f} | Diff={v_m-v_o:+3.0f}")
+
+print("\n" + "="*60)
+print(f"Andromeda (T_Z = {T_Z_and:.2e}, r_c = {r_c_and} kpc)")
+print("="*60)
+for r in [5, 10, 15, 20, 25]:
+    v_o = np.interp(r, r_and, v_and)
+    v_m = rotation_curve(r, 8e10, 2e10, 1e10, 6.0, 1.5, 8.0, r_c_and, T_Z_and)
+    print(f"r={r:3.0f} kpc | Obs={v_o:.0f} | Model={v_m:.0f} | Diff={v_m-v_o:+3.0f}")
