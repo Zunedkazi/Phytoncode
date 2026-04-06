@@ -1,0 +1,72 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+G = 4.300e-6  # kpc (km/s)^2 / Msun
+
+# =======================
+# Galaxy-specific parameters
+# =======================
+galaxies = {
+    "Milky Way": {
+        "r_obs": [0.5,1,2,3,4,5,6,7,8,9,10,12,14,16,18,20],
+        "v_obs": [180,200,215,225,230,235,238,240,242,243,244,244,242,240,238,236],
+        "M_disk": 5.2e10, "M_bulge": 1.0e10, "M_gas": 5.2e9,
+        "r_scale": 5.0, "r_bulge": 1.0, "r_gas": 7.0,
+        "v_inf": 220, "r_c": 5.0
+    },
+    "Andromeda": {
+        "r_obs": [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30],
+        "v_obs": [180,210,230,240,245,248,250,251,252,253,253,254,254,254,254],
+        "M_disk": 8.2e10, "M_bulge": 2.0e10, "M_gas": 1.1e10,
+        "r_scale": 6.0, "r_bulge": 1.5, "r_gas": 8.0,
+        "v_inf": 180, "r_c": 12.0
+    },
+    "NGC 3198": {
+        "r_obs": [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30],
+        "v_obs": [80,110,125,135,140,143,145,146,147,148,148,148,148,148,148],
+        "M_disk": 9.2e9, "M_bulge": 3.0e8, "M_gas": 3.2e9,
+        "r_scale": 5.0, "r_bulge": 1.0, "r_gas": 6.0,
+        "v_inf": 148, "r_c": 8.0
+    }
+}
+
+def M_bary(r, M_disk, M_bulge, M_gas, r_scale, r_bulge, r_gas):
+    disk = M_disk * (1 - np.exp(-r / r_scale))
+    bulge = M_bulge * (r**2 / (r**2 + r_bulge**2))
+    gas = M_gas * (1 - np.exp(-r / r_gas))
+    return disk + bulge + gas
+
+def v_total(r, gal):
+    v_bary_sq = G * M_bary(r, gal["M_disk"], gal["M_bulge"], gal["M_gas"],
+                            gal["r_scale"], gal["r_bulge"], gal["r_gas"]) / r
+    v_fabric_sq = gal["v_inf"]**2 * (1 - np.exp(-r / gal["r_c"]))
+    return np.sqrt(v_bary_sq + v_fabric_sq)
+
+# =======================
+# Plot
+# =======================
+plt.figure(figsize=(10,6))
+for name, gal in galaxies.items():
+    r_model = np.linspace(min(gal["r_obs"]), max(gal["r_obs"]), 200)
+    v_model = [v_total(r, gal) for r in r_model]
+    plt.plot(r_model, v_model, '-', label=f"{name} Model")
+    plt.plot(gal["r_obs"], gal["v_obs"], 'o', label=f"{name} Obs")
+plt.xlabel("Radius (kpc)")
+plt.ylabel("Velocity (km/s)")
+plt.title("Galactic Rotation Curves (v_∞ Method)")
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.show()
+
+# =======================
+# Diff% table
+# =======================
+for name, gal in galaxies.items():
+    print(f"\n{name}:")
+    print(f"{'r (kpc)':<8} {'Obs':<8} {'Model':<8} {'Diff%':<8}")
+    for r in [5,10,15,20,25]:
+        if r <= max(gal["r_obs"]):
+            v_o = np.interp(r, gal["r_obs"], gal["v_obs"])
+            v_m = v_total(r, gal)
+            diff = (v_m - v_o)/v_o*100
+            print(f"{r:<8} {v_o:<8.1f} {v_m:<8.1f} {diff:<+8.1f}%")
